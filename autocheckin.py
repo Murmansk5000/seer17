@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -37,6 +38,19 @@ def page_text(page) -> str:
         return page.locator("body").inner_text(timeout=3000)
     except PlaywrightTimeoutError:
         return ""
+
+
+def write_session_from_env() -> None:
+    raw_json = os.getenv("SESSION_JSON")
+    b64_json = os.getenv("SESSION_JSON_BASE64")
+    if not raw_json and not b64_json:
+        return
+
+    SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if b64_json:
+        raw_json = base64.b64decode(b64_json).decode("utf-8")
+    SESSION_FILE.write_text(raw_json or "", encoding="utf-8")
+    log(f"session state loaded from environment into: {SESSION_FILE}")
 
 
 def has_slider_captcha(page) -> bool:
@@ -293,6 +307,7 @@ def sign(page) -> int:
 def main() -> int:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    write_session_from_env()
     first_login_gui = env_bool("FIRST_LOGIN_GUI", False)
     headless = env_bool("HEADLESS", not first_login_gui)
     slow_mo = int(os.getenv("SLOW_MO_MS", "0"))

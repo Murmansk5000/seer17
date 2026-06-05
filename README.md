@@ -66,9 +66,35 @@ python autocheckin.py
 
 如果要用 Docker 做 GUI，需要宿主机提供图形显示环境；Windows Docker Desktop 默认容器窗口不会直接显示。更省事的做法是在本机先用上面的 GUI 模式完成一次登录生成 `./data/session.json`，再让 Docker 复用这个文件。
 
+## Unraid
+
+如果不想挂载/查找 `session.json`，可以把登录状态放进 Unraid Docker 模板的环境变量。
+
+先在本机生成 base64：
+
+```powershell
+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content .\data\session.json -Raw)))
+```
+
+然后在 Unraid 容器模板里添加变量：
+
+```text
+Key: SESSION_JSON_BASE64
+Value: 上面生成的整段 base64
+```
+
+也可以直接填原始 JSON：
+
+```text
+Key: SESSION_JSON
+Value: session.json 的完整内容
+```
+
+更推荐 `SESSION_JSON_BASE64`，因为不容易被引号和换行影响。`SESSION_JSON_BASE64` 和 `SESSION_JSON` 同时存在时，优先使用 `SESSION_JSON_BASE64`。
+
 ## 验证码
 
-当前登录页可能出现“拖动下方拼图完成验证”。脚本不会绕过验证码；遇到验证码会截图并退出。通过一次登录后，后续可复用 `./data/profile` 中的会话继续签到。
+当前登录页可能出现“拖动下方拼图完成验证”。脚本不会绕过验证码；遇到验证码会截图并退出。通过一次登录后，后续可复用 `./data/session.json` 或 `SESSION_JSON_BASE64` 中的会话继续签到。
 
 ## 环境变量
 
@@ -77,6 +103,8 @@ python autocheckin.py
 - `HEADLESS`: 是否无头运行，默认 `true`
 - `BROWSER_EXECUTABLE`: 浏览器路径，Docker 镜像内默认 `/usr/bin/chromium`
 - `SESSION_FILE`: 登录状态文件路径，默认 `/data/session.json`
+- `SESSION_JSON_BASE64`: base64 编码后的登录状态 JSON，适合 Unraid 环境变量
+- `SESSION_JSON`: 原始登录状态 JSON
 - `FIRST_LOGIN_GUI`: 首次登录 GUI 模式，默认 `false`
 - `LOGIN_WAIT_SECONDS`: GUI 模式等待登录完成的秒数，默认 `300`
 - `ALLOW_PASSWORD_LOGIN`: 是否尝试账号密码登录，默认 `true`
