@@ -10,8 +10,8 @@ from playwright.sync_api import sync_playwright
 
 EVENT_URL = "https://seerm.61.com/events/17years/#sign"
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
-PROFILE_DIR = Path(os.getenv("PROFILE_DIR", str(DATA_DIR / "profile")))
 ARTIFACT_DIR = Path(os.getenv("ARTIFACT_DIR", str(DATA_DIR / "artifacts")))
+SESSION_FILE = Path(os.getenv("SESSION_FILE", str(DATA_DIR / "session.json")))
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -111,7 +111,7 @@ def wait_for_manual_login(page) -> bool:
             "() => document.querySelector('#J_login')?.classList.contains('logined')",
             timeout=wait_seconds * 1000,
         )
-        log("manual login detected; session saved in the persistent profile")
+        log("manual login detected")
         return True
     except PlaywrightTimeoutError:
         path = screenshot(page, "manual-login-timeout.png")
@@ -233,8 +233,8 @@ def sign(page) -> int:
 
 
 def main() -> int:
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     first_login_gui = env_bool("FIRST_LOGIN_GUI", False)
     headless = env_bool("HEADLESS", not first_login_gui)
     slow_mo = int(os.getenv("SLOW_MO_MS", "0"))
@@ -243,27 +243,37 @@ def main() -> int:
         browser_name = os.getenv("BROWSER", "chromium")
         browser_type = getattr(p, browser_name)
         executable_path = os.getenv("BROWSER_EXECUTABLE") or None
-        context = browser_type.launch_persistent_context(
-            str(PROFILE_DIR),
+        browser = browser_type.launch(
             headless=headless,
             executable_path=executable_path,
             slow_mo=slow_mo,
-            viewport={"width": 1280, "height": 900},
-            user_agent=(
+            args=["--no-sandbox", "--disable-dev-shm-usage"],
+        )
+        context_kwargs = {
+            "viewport": {"width": 1280, "height": 900},
+            "user_agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36"
             ),
-        )
-        page = context.pages[0] if context.pages else context.new_page()
+        }
+        if SESSION_FILE.exists():
+            log(f"loading session state: {SESSION_FILE}")
+            context_kwargs["storage_state"] = str(SESSION_FILE)
+        context = browser.new_context(**context_kwargs)
+        page = context.new_page()
         page.goto(EVENT_URL, wait_until="domcontentloaded", timeout=60000)
         page.wait_for_timeout(8000)
 
         if not ensure_logged_in(page):
             context.close()
+            browser.close()
             return 2
 
         result = sign(page)
+        context.storage_state(path=str(SESSION_FILE))
+        log(f"session state saved: {SESSION_FILE}")
         context.close()
+        browser.close()
         return result
 
 
