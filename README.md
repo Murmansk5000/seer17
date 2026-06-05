@@ -26,6 +26,19 @@ docker compose run --rm autocheckin
 ghcr.io/Murmansk5000/seer17:latest
 ```
 
+如果要发布到 Docker Hub，在 GitHub 仓库的 `Settings -> Secrets and variables -> Actions` 添加两个 Repository secrets：
+
+```text
+DOCKERHUB_USERNAME
+DOCKERHUB_TOKEN
+```
+
+之后每次 push 到 `main` 会额外发布：
+
+```text
+docker.io/<DOCKERHUB_USERNAME>/seer17:latest
+```
+
 从远端镜像运行：
 
 ```powershell
