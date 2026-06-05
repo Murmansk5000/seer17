@@ -56,6 +56,33 @@ def visible_login_frames(page):
     return [frame for frame in page.frames if "account-co.61.com" in frame.url]
 
 
+def login_dialog_is_open(page) -> bool:
+    if visible_login_frames(page):
+        return True
+    selectors = [
+        ".taomeesdk-dialog",
+        ".taomeesdk-dialog--fixed",
+        ".taomee-dialog",
+    ]
+    for selector in selectors:
+        try:
+            locator = page.locator(selector).first
+            if not locator.count():
+                continue
+            locator.wait_for(state="visible", timeout=500)
+            return True
+        except PlaywrightTimeoutError:
+            continue
+    return False
+
+
+def open_login_dialog(page) -> None:
+    if login_dialog_is_open(page):
+        return
+    page.locator("#J_login").click(timeout=10000)
+    page.wait_for_timeout(3000)
+
+
 def fill_first(frame, selectors, value: str) -> bool:
     for selector in selectors:
         locator = frame.locator(selector).first
@@ -147,8 +174,7 @@ def close_userinfo_overlay(page) -> None:
 
 
 def try_password_login(page, mimi_id: str, password: str) -> bool:
-    page.locator("#J_login").click(timeout=10000)
-    page.wait_for_timeout(3000)
+    open_login_dialog(page)
     click_mimi_login_option(page)
 
     if has_slider_captcha(page):
@@ -203,9 +229,8 @@ def ensure_logged_in(page) -> bool:
     if is_logged_in(page):
         return True
 
-    if env_bool("FIRST_LOGIN_GUI", False):
-        page.locator("#J_login").click(timeout=10000)
-        page.wait_for_timeout(3000)
+    if env_bool("FIRST_LOGIN_GUI", False) or not env_bool("HEADLESS", True):
+        open_login_dialog(page)
         click_mimi_login_option(page)
         return wait_for_manual_login(page)
 
