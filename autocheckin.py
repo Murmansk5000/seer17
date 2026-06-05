@@ -2,6 +2,8 @@ import os
 import re
 import sys
 import base64
+import json
+import binascii
 from datetime import datetime
 from pathlib import Path
 
@@ -47,10 +49,44 @@ def write_session_from_env() -> None:
         return
 
     SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-    if b64_json:
-        raw_json = base64.b64decode(b64_json).decode("utf-8")
-    SESSION_FILE.write_text(raw_json or "", encoding="utf-8")
+    try:
+        if b64_json:
+            normalized = b64_json.strip().strip('"').strip("'")
+            normalized = re.sub(r"\s+", "", normalized)
+            raw_json = base64.b64decode(normalized, validate=True).decode("utf-8")
+        else:
+            raw_json = (raw_json or "").strip().strip('"').strip("'")
+
+        validate_session_json(raw_json)
+    except (binascii.Error, UnicodeDecodeError, ValueError) as exc:
+        log(f"invalid session state from environment: {exc}")
+        if SESSION_FILE.exists():
+            SESSION_FILE.unlink()
+        return
+
+    SESSION_FILE.write_text(raw_json, encoding="utf-8")
     log(f"session state loaded from environment into: {SESSION_FILE}")
+
+
+def validate_session_json(raw_json: str) -> None:
+    if not raw_json.strip():
+        raise ValueError("value is empty")
+    data = json.loads(raw_json)
+    if not isinstance(data, dict):
+        raise ValueError("session JSON must be an object")
+    if "cookies" not in data or "origins" not in data:
+        raise ValueError("session JSON must contain cookies and origins")
+
+
+def session_file_is_valid() -> bool:
+    if not SESSION_FILE.exists():
+        return False
+    try:
+        validate_session_json(SESSION_FILE.read_text(encoding="utf-8"))
+        return True
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        log(f"ignoring invalid session file {SESSION_FILE}: {exc}")
+        return False
 
 
 def has_slider_captcha(page) -> bool:
@@ -329,7 +365,7 @@ def main() -> int:
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36"
             ),
         }
-        if SESSION_FILE.exists():
+        if session_file_is_valid():
             log(f"loading session state: {SESSION_FILE}")
             context_kwargs["storage_state"] = str(SESSION_FILE)
         context = browser.new_context(**context_kwargs)
