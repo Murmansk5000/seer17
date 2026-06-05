@@ -60,9 +60,11 @@ def fill_first(frame, selectors, value: str) -> bool:
     for selector in selectors:
         locator = frame.locator(selector).first
         try:
-            if locator.count() and locator.is_visible(timeout=1000):
-                locator.fill(value, timeout=3000)
-                return True
+            if not locator.count():
+                continue
+            locator.wait_for(state="visible", timeout=1000)
+            locator.fill(value, timeout=3000)
+            return True
         except PlaywrightTimeoutError:
             continue
     return False
@@ -72,9 +74,11 @@ def click_first(frame, selectors) -> bool:
     for selector in selectors:
         locator = frame.locator(selector).first
         try:
-            if locator.count() and locator.is_visible(timeout=1000):
-                locator.click(timeout=3000)
-                return True
+            if not locator.count():
+                continue
+            locator.wait_for(state="visible", timeout=1000)
+            locator.click(timeout=3000)
+            return True
         except PlaywrightTimeoutError:
             continue
     return False
@@ -91,11 +95,13 @@ def click_mimi_login_option(page) -> None:
         for label in labels:
             try:
                 target = frame.get_by_text(label, exact=False).first
-                if target.count() and target.is_visible(timeout=1000):
-                    log(f"switching login method: {label}")
-                    target.click(timeout=3000)
-                    page.wait_for_timeout(1500)
-                    return
+                if not target.count():
+                    continue
+                target.wait_for(state="visible", timeout=1000)
+                log(f"switching login method: {label}")
+                target.click(timeout=3000)
+                page.wait_for_timeout(1500)
+                return
             except PlaywrightTimeoutError:
                 continue
 
