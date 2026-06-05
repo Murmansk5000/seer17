@@ -242,9 +242,11 @@ def main() -> int:
     with sync_playwright() as p:
         browser_name = os.getenv("BROWSER", "chromium")
         browser_type = getattr(p, browser_name)
+        executable_path = os.getenv("BROWSER_EXECUTABLE") or None
         context = browser_type.launch_persistent_context(
             str(PROFILE_DIR),
             headless=headless,
+            executable_path=executable_path,
             slow_mo=slow_mo,
             viewport={"width": 1280, "height": 900},
             user_agent=(

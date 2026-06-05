@@ -74,6 +74,7 @@ python autocheckin.py
 - `MIMI_ID`: 米米号
 - `MIMI_PASSWORD`: 密码
 - `HEADLESS`: 是否无头运行，默认 `true`
+- `BROWSER_EXECUTABLE`: 浏览器路径，Docker 镜像内默认 `/usr/bin/chromium`
 - `FIRST_LOGIN_GUI`: 首次登录 GUI 模式，默认 `false`
 - `LOGIN_WAIT_SECONDS`: GUI 模式等待登录完成的秒数，默认 `300`
 - `ALLOW_PASSWORD_LOGIN`: 是否尝试账号密码登录，默认 `true`
