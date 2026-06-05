@@ -1,0 +1,10 @@
+services:
+  autocheckin:
+    build: .
+    environment:
+      MIMI_ID: ${MIMI_ID}
+      MIMI_PASSWORD: ${MIMI_PASSWORD}
+      HEADLESS: ${HEADLESS:-true}
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
