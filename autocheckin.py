@@ -125,6 +125,27 @@ def wait_for_manual_login(page) -> bool:
         return False
 
 
+def close_userinfo_overlay(page) -> None:
+    selectors = [
+        ".uc-userinfo-back",
+        ".uc-mask",
+        ".taomee-dialog__closebtn",
+        ".taomee-dialog__close",
+    ]
+    for selector in selectors:
+        try:
+            locator = page.locator(selector).first
+            if not locator.count():
+                continue
+            locator.wait_for(state="visible", timeout=1000)
+            locator.click(timeout=3000)
+            page.wait_for_timeout(500)
+        except PlaywrightTimeoutError:
+            continue
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(500)
+
+
 def try_password_login(page, mimi_id: str, password: str) -> bool:
     page.locator("#J_login").click(timeout=10000)
     page.wait_for_timeout(3000)
@@ -200,6 +221,8 @@ def ensure_logged_in(page) -> bool:
 
 
 def sign(page) -> int:
+    close_userinfo_overlay(page)
+
     try:
         count_text = page.locator(".sign__count-num").inner_text(timeout=10000)
         before = int(re.sub(r"\D", "", count_text) or "0")
@@ -211,7 +234,11 @@ def sign(page) -> int:
         log(f"already signed today; signed count: {before}")
         return 0
 
-    page.locator(".sign__btn").click(timeout=10000)
+    try:
+        page.locator(".sign__btn").click(timeout=10000)
+    except PlaywrightTimeoutError:
+        close_userinfo_overlay(page)
+        page.locator(".sign__btn").click(timeout=10000)
     page.wait_for_timeout(5000)
 
     text = page_text(page)
@@ -271,6 +298,8 @@ def main() -> int:
         page.wait_for_timeout(8000)
 
         if not ensure_logged_in(page):
+            context.storage_state(path=str(SESSION_FILE))
+            log(f"session state saved: {SESSION_FILE}")
             context.close()
             browser.close()
             return 2
