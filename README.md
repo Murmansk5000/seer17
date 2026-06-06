@@ -68,29 +68,44 @@ python autocheckin.py
 
 ## Unraid
 
-如果不想挂载/查找 `session.json`，可以把登录状态放进 Unraid Docker 模板的环境变量。
+推荐用文件方式，不需要填 `SESSION_JSON_BASE64`。
 
-先在本机生成 base64：
+Unraid 模板里添加路径：
+
+```text
+Container Path: /data
+Host Path: /mnt/user/appdata/seer17
+```
+
+如果 `/mnt/user/appdata/seer17/session.json` 不存在，容器启动时会自动创建一个空文件。你把本机生成的 `session.json` 内容粘贴进去，然后重启容器即可。
+
+本机生成登录状态：
 
 ```powershell
-[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content .\data\session.json -Raw)))
+$env:HEADLESS="false"
+$env:DATA_DIR="$PWD\data"
+python autocheckin.py
 ```
 
-然后在 Unraid 容器模板里添加变量：
+然后复制本机文件内容：
+
+```powershell
+Get-Content .\data\session.json -Raw | Set-Clipboard
+```
+
+粘贴到 Unraid 文件：
 
 ```text
-Key: SESSION_JSON_BASE64
-Value: 上面生成的整段 base64
+/mnt/user/appdata/seer17/session.json
 ```
 
-也可以直接填原始 JSON：
+也可以用命令行编辑：
 
-```text
-Key: SESSION_JSON
-Value: session.json 的完整内容
+```bash
+nano /mnt/user/appdata/seer17/session.json
 ```
 
-更推荐 `SESSION_JSON_BASE64`，因为不容易被引号和换行影响。`SESSION_JSON_BASE64` 和 `SESSION_JSON` 同时存在时，优先使用 `SESSION_JSON_BASE64`。
+保存后重启容器。
 
 ## 验证码
 
@@ -103,8 +118,8 @@ Value: session.json 的完整内容
 - `HEADLESS`: 是否无头运行，默认 `true`
 - `BROWSER_EXECUTABLE`: 浏览器路径，Docker 镜像内默认 `/usr/bin/chromium`
 - `SESSION_FILE`: 登录状态文件路径，默认 `/data/session.json`
-- `SESSION_JSON_BASE64`: base64 编码后的登录状态 JSON，适合 Unraid 环境变量
-- `SESSION_JSON`: 原始登录状态 JSON
+- `SESSION_JSON_BASE64`: 可选，base64 编码后的登录状态 JSON
+- `SESSION_JSON`: 可选，原始登录状态 JSON
 - `FIRST_LOGIN_GUI`: 首次登录 GUI 模式，默认 `false`
 - `LOGIN_WAIT_SECONDS`: GUI 模式等待登录完成的秒数，默认 `300`
 - `ALLOW_PASSWORD_LOGIN`: 是否尝试账号密码登录，默认 `true`

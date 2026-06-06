@@ -15,6 +15,7 @@ EVENT_URL = "https://seerm.61.com/events/17years/#sign"
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 ARTIFACT_DIR = Path(os.getenv("ARTIFACT_DIR", str(DATA_DIR / "artifacts")))
 SESSION_FILE = Path(os.getenv("SESSION_FILE", str(DATA_DIR / "session.json")))
+EMPTY_SESSION = {"cookies": [], "origins": []}
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -66,6 +67,16 @@ def write_session_from_env() -> None:
 
     SESSION_FILE.write_text(raw_json, encoding="utf-8")
     log(f"session state loaded from environment into: {SESSION_FILE}")
+
+
+def ensure_session_file_exists() -> bool:
+    if SESSION_FILE.exists():
+        return False
+    SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SESSION_FILE.write_text(json.dumps(EMPTY_SESSION, ensure_ascii=False, indent=2), encoding="utf-8")
+    log(f"created empty session file: {SESSION_FILE}")
+    log("paste your generated session.json content into this file, then restart the container")
+    return True
 
 
 def validate_session_json(raw_json: str) -> None:
@@ -344,9 +355,12 @@ def main() -> int:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     write_session_from_env()
+    created_empty_session = ensure_session_file_exists()
     first_login_gui = env_bool("FIRST_LOGIN_GUI", False)
     headless = env_bool("HEADLESS", not first_login_gui)
     slow_mo = int(os.getenv("SLOW_MO_MS", "0"))
+    if created_empty_session and headless:
+        return 2
 
     with sync_playwright() as p:
         browser_name = os.getenv("BROWSER", "chromium")
