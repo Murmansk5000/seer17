@@ -374,8 +374,7 @@ def main() -> int:
         page.wait_for_timeout(8000)
 
         if not ensure_logged_in(page):
-            context.storage_state(path=str(SESSION_FILE))
-            log(f"session state saved: {SESSION_FILE}")
+            log("not saving session state because login was not confirmed")
             context.close()
             browser.close()
             return 2
