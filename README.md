@@ -68,7 +68,7 @@ python autocheckin.py
 
 ## Unraid
 
-推荐用文件方式，不需要填 `SESSION_JSON_BASE64`。
+推荐用一体化 GUI 模式在 Unraid 容器里完成首次登录。这样 `session.json` 直接在 Unraid/Chromium 环境生成，不需要从 PC 搬文件。
 
 Unraid 模板里添加路径：
 
@@ -77,35 +77,42 @@ Container Path: /data
 Host Path: /mnt/user/appdata/seer17
 ```
 
-如果 `/mnt/user/appdata/seer17/session.json` 不存在，容器启动时会自动创建一个空文件。你把本机生成的 `session.json` 内容粘贴进去，然后重启容器即可。
+添加端口：
 
-本机生成登录状态：
-
-```powershell
-$env:HEADLESS="false"
-$env:DATA_DIR="$PWD\data"
-python autocheckin.py
+```text
+Container Port: 6080
+Host Port: 6080
+Protocol: TCP
 ```
 
-然后复制本机文件内容：
+首次登录时添加变量：
 
-```powershell
-Get-Content .\data\session.json -Raw | Set-Clipboard
+```text
+GUI=true
 ```
 
-粘贴到 Unraid 文件：
+启动容器后打开：
+
+```text
+http://UnraidIP:6080/vnc.html
+```
+
+在网页里的 Chromium 完成米米号登录/滑块。成功后容器会保存：
 
 ```text
 /mnt/user/appdata/seer17/session.json
 ```
 
-也可以用命令行编辑：
+之后把 `GUI` 改成 `false` 或删除这个变量，保留 `/data` 挂载，容器就会 headless 自动签到。
+
+如果 `/mnt/user/appdata/seer17/session.json` 不存在，普通 headless 模式会自动创建一个空文件并退出，提示你先填入或用 GUI 模式生成。
+
+手动查看文件：
 
 ```bash
-nano /mnt/user/appdata/seer17/session.json
+ls -lah /mnt/user/appdata/seer17
+cat /mnt/user/appdata/seer17/session.json | head
 ```
-
-保存后重启容器。
 
 ## 验证码
 
@@ -115,6 +122,8 @@ nano /mnt/user/appdata/seer17/session.json
 
 - `MIMI_ID`: 米米号
 - `MIMI_PASSWORD`: 密码
+- `GUI`: Unraid/noVNC GUI 模式，设为 `true` 时打开 `6080` 网页浏览器
+- `VNC_RESOLUTION`: GUI 分辨率，默认 `1280x900x24`
 - `HEADLESS`: 是否无头运行，默认 `true`
 - `BROWSER_EXECUTABLE`: 浏览器路径，Docker 镜像内默认 `/usr/bin/chromium`
 - `SESSION_FILE`: 登录状态文件路径，默认 `/data/session.json`

@@ -9,17 +9,26 @@ RUN apt-get update \
       ca-certificates \
       chromium \
       fonts-noto-cjk \
+      fluxbox \
+      novnc \
+      websockify \
+      x11vnc \
+      xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY autocheckin.py .
+COPY autocheckin.py entrypoint.sh .
+RUN chmod +x /app/entrypoint.sh
 
 ENV DATA_DIR=/data
 ENV HEADLESS=true
 ENV BROWSER_EXECUTABLE=/usr/bin/chromium
+ENV DISPLAY=:0
+ENV VNC_RESOLUTION=1280x900x24
 
 VOLUME ["/data"]
+EXPOSE 6080 5900
 
-CMD ["python", "autocheckin.py"]
+ENTRYPOINT ["/app/entrypoint.sh"]
